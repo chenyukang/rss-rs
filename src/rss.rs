@@ -17,7 +17,7 @@ static PAGES_DB: &'static str = "/tmp/pages.db";
 static PAGES_DB: &'static str = "./db/pages.db";
 
 static IMAGE_DIR: &'static str = "./pages/images";
-static ALL_FEEDS: &'static str = "./ob/Unsort/feeds.md";
+static ALL_FEEDS: &'static str = "./conf/feed";
 /// An item within a feed
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Page {

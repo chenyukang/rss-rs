@@ -6,6 +6,7 @@ use actix_web::{
 use base::rss;
 use chrono::prelude::*;
 use chrono::DateTime;
+use clap;
 use serde::Deserialize;
 use std::io;
 
@@ -13,6 +14,7 @@ use std::io;
 struct RssQuery {
     query_type: String, // unread or all
     limit: usize,
+    page: usize,
 }
 
 #[derive(Debug, Deserialize)]
@@ -34,7 +36,8 @@ async fn p404() -> Result<fs::NamedFile> {
     Ok(fs::NamedFile::open("static/404.html")?.set_status_code(StatusCode::NOT_FOUND))
 }
 
-async fn rss_list(info: web::Json<RssQuery>) -> HttpResponse {
+async fn posts_fetch(info: web::Query<RssQuery>) -> HttpResponse {
+    println!("query: {:?}", info);
     let limits = if info.query_type == "unread" {
         vec![("readed", "0")]
     } else {
@@ -49,7 +52,7 @@ async fn rss_list(info: web::Json<RssQuery>) -> HttpResponse {
             .unwrap()
     });
 
-    let page_limit = if info.query_type == "unread" { 15 } else { 100 };
+    let page_limit = info.limit;
     let max_len = usize::min(page_limit as usize, pages.len());
     let res: Vec<String> = pages[..max_len]
         .iter()
@@ -69,6 +72,21 @@ async fn main() -> std::io::Result<()> {
     std::env::set_var("RUST_LOG", "actix_web=info");
     env_logger::init();
 
+    let matches = clap::App::new("Rss-rs")
+        .version("0.1")
+        .author("yukang <moorekang@gmail.com>")
+        .about("Rss Reader ")
+        .arg(
+            clap::Arg::new("update")
+                .short('u')
+                .help("Update and fetch rss"),
+        )
+        .get_matches();
+
+    if matches.is_present("update") {
+        let res = rss::update_rss(None, false);
+        println!("res: {:?}", res);
+    }
     HttpServer::new(|| {
         App::new()
             // cookie session middleware
@@ -84,7 +102,7 @@ async fn main() -> std::io::Result<()> {
                     StatusCode::INTERNAL_SERVER_ERROR,
                 )
             }))
-            .service(web::resource("/rss").route(web::get().to(rss_list)))
+            .service(web::resource("/posts").route(web::get().to(posts_fetch)))
             // static files
             .service(fs::Files::new("/static", "static"))
             // redirect
