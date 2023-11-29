@@ -176,7 +176,7 @@ fn fetch_feed(feed: &str, force: bool) -> Result<i32, Box<dyn Error>> {
         let prev = query_page_link(&link);
         let page_exist = prev.is_some();
         if page_exist && !force {
-            println!("link: {} cached", link);
+            //println!("link: {} cached", link);
             continue;
         }
         let mut content = if let Some(ct) = entry.content {

@@ -2,8 +2,7 @@
     import { onMount } from "svelte";
     const jq = window.$;
 
-    export let cur_page;
-    export let cur_time;
+    let cur_page = "rss";
     let file = "";
     let content = "";
     let show_status = false;
@@ -20,23 +19,9 @@
     };
 
     $: {
-        console.log(cur_time);
         if (cur_page) {
             refresh(cur_page);
         }
-    }
-
-    function renderMdToHtml(response) {
-        let converter = new showdown.Converter({
-            simpleLineBreaks: true,
-            tasklists: true,
-            headerLevelStart: 2,
-            simplifiedAutoLink: true,
-            strikethrough: true,
-            emoji: true,
-        });
-        converter.setFlavor("github");
-        return converter.makeHtml(response);
     }
 
     function fetchPage(url, query_type = "") {
@@ -64,7 +49,6 @@
                 },
             },
             success: function (response) {
-                console.log(response);
                 show_status = false;
                 file = response[0];
                 content = response[1];
@@ -72,25 +56,16 @@
                 publish_time = response[3];
                 source = response[4];
                 if (file != "NoPage") {
-                    localStorage.setItem("page-content", content);
-                    localStorage.setItem("file", file);
-                    jq("#fileName").text(file.replaceAll(".md", ""));
+                    jq("#fileName").text(file);
                     jq("#fileName").prop("hidden", false);
                     jq("#pageNavBar").prop("hidden", false);
-                    let res =
-                        query_type == "rss" ? content : renderMdToHtml(content);
-                    jq("#page-content").html(res);
+                    jq("#page-content").html(content);
                     jq("#page-content").prop("hidden", false);
-                    console.log(rsslink);
                     if (rsslink != undefined && rsslink != "") {
                         jq("#rsslink").prop("hidden", false);
                         show_rsslink = true;
-                        let pos = localStorage.getItem("pos_" + file);
-                        pos = pos == null ? 0 : pos;
-                        jq("html, body").animate({ scrollTop: pos }, "fast");
                     }
                     setPageDefault();
-                    console.log(show_status);
                 } else {
                     jq("#page-content").html("<h3>No Page</h3>");
                     jq("#fileName").text(url);
@@ -112,32 +87,18 @@
                 if (!url) {
                     return false;
                 }
-                //console.log(e.target);
-                console.log(e.target);
-                let internal_link = e.target.getAttribute("id");
-                console.log(internal_link);
-                if (internal_link != null) {
-                    if (url.indexOf("#") != -1) {
-                        let type = cur_page == "rss" ? "rss" : "md";
-                        fetchPage(internal_link, type);
-                    }
+                let link = e.target.getAttribute("id");
+                if (link != null) {
+                    fetchPage(link, "rss");
                 } else {
-                    console.log("open ....");
                     window.open(url, "_blank");
                 }
             });
-
-        window.onscroll = function () {
-            localStorage.setItem("pos_" + file, window.pageYOffset);
-        };
     }
 
     function setPageDefault() {
-        jq("#page-content").prop("contenteditable", false);
         jq("#backBtn").prop("hidden", false);
         jq("#markBtn").prop("hidden", true);
-        jq("#page-content").css("backgroundColor", "white");
-        jq("#editBtn").text("Edit");
         hookInit();
     }
 
@@ -224,20 +185,14 @@
             },
             success: function (response) {
                 show_status = false;
-                file = "rss";
                 if (response != "no-page") {
-                    jq("#page-content").html(renderMdToHtml(response));
+                    jq("#page-content").html(response);
                     jq("#page-content").prop("hidden", false);
                     jq("#fileName").prop("hidden", true);
                     jq("#backBtn").prop("hidden", true);
                     jq("#markBtn").prop("hidden", false);
                     jq("#pageNavBar").prop("hidden", true);
-                    console.log("set setPageDefault....");
                     jq("#rssread").prop("checked", rss_query_type == "all");
-                    console.log("set default: ", rss_query_type);
-                    let pos = localStorage.getItem("pos_" + file);
-                    pos = pos == null ? 0 : pos;
-                    jq("html, body").animate({ scrollTop: pos }, "fast");
                 } else {
                     jq("#page-content").html(
                         "<h3>No Page</h3>" + " " + local_date,
@@ -254,66 +209,52 @@
     function rssRead() {
         rss_query_type = jq(this).prop("checked") === true ? "all" : "unread";
         localStorage.setItem("rss_query_type", rss_query_type);
-        cur_page = "rss";
-        console.log("rss read:", rss_query_type);
         fetchRss();
-    }
-
-    function handleBackButton() {
-        console.log("back button pressed");
     }
 
     onMount(async () => {
         setPageDefault();
-        window.addEventListener('popstate', handleBackButton);
-
     });
 </script>
 
 <div class="tab-content">
-    {#if cur_page == "rss"}
-        <div class="row sticky-top" style="margin-top: 20px; border: 0;">
-            <div class="col-md-2" />
-            <div class="col-md-8 text-right" id="pageNavBarRss">
+    <div class="row sticky-top" style="margin-top: 20px; border: 0;">
+        <div class="col-md-2" />
+        <div class="col-md-8 text-right" id="pageNavBarRss">
+            <button
+                type="button"
+                class="btn btn-info"
+                style="float: left"
+                id="backBtn"
+                hidden="true"
+                on:click={fetchRss}>Back</button
+            >
+
+            <button
+                type="button"
+                class="btn btn-info"
+                style="float: left"
+                id="markBtn"
+                hidden="true"
+                on:click={markRead}>Mark</button
+            >
+
+            {#if !show_rsslink}
+                <label class="switch" style="float: right">
+                    <input id="rssread" type="checkbox" on:click={rssRead} />
+                    <span class="slider round"></span>
+                </label>
+            {:else}
                 <button
                     type="button"
                     class="btn btn-info"
-                    style="float: left"
-                    id="backBtn"
-                    hidden="true"
-                    on:click={fetchRss}>Back</button
+                    style="float: right"
+                    id="markRemove"
+                    on:click={markRemove}>Unsubscribe</button
                 >
-
-                <button
-                    type="button"
-                    class="btn btn-info"
-                    style="float: left"
-                    id="markBtn"
-                    hidden="true"
-                    on:click={markRead}>Mark</button
-                >
-
-                {#if !show_rsslink}
-                    <label class="switch" style="float: right">
-                        <input
-                            id="rssread"
-                            type="checkbox"
-                            on:click={rssRead}
-                        />
-                        <span class="slider round"></span>
-                    </label>
-                {:else}
-                    <button
-                        type="button"
-                        class="btn btn-info"
-                        style="float: right"
-                        id="markRemove"
-                        on:click={markRemove}>Unsubscribe</button
-                    >
-                {/if}
-            </div>
+            {/if}
         </div>
-    {/if}
+    </div>
 
     {#if show_status}
         <div class="row">
