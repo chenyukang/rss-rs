@@ -18,6 +18,7 @@ static PAGES_DB: &'static str = "./db/pages.db";
 
 static IMAGE_DIR: &'static str = "./pages/images";
 static ALL_FEEDS: &'static str = "./db/feeds.md";
+
 /// An item within a feed
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Page {
@@ -147,12 +148,10 @@ fn fetch_page(url: &str) -> Result<String, Box<dyn Error>> {
 }
 
 fn first_link(links: &Vec<Link>) -> String {
-    for l in links {
-        if Url::parse(&l.href).is_ok() {
-            return l.href.to_owned();
-        }
-    }
-    String::from("")
+    links
+        .iter()
+        .find(|l| Url::parse(&l.href).is_ok())
+        .map_or("".to_owned(), |l| l.href.to_string())
 }
 
 fn fetch_feed(feed: &str, force: bool) -> Result<i32, Box<dyn Error>> {
@@ -176,7 +175,6 @@ fn fetch_feed(feed: &str, force: bool) -> Result<i32, Box<dyn Error>> {
         let prev = query_page_link(&link);
         let page_exist = prev.is_some();
         if page_exist && !force {
-            //println!("link: {} cached", link);
             continue;
         }
         let mut content = if let Some(ct) = entry.content {
@@ -227,11 +225,6 @@ fn fetch_feed(feed: &str, force: bool) -> Result<i32, Box<dyn Error>> {
         }
     }
     Ok(succ_count)
-}
-
-pub fn cur_pages() -> Vec<Page> {
-    let page_buf = fs::read_to_string(PAGES_DB).unwrap_or(String::from("[]"));
-    serde_json::from_str(&page_buf).unwrap()
 }
 
 fn init_db(db_name: Option<&str>) -> rusqlite::Result<()> {
