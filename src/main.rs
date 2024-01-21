@@ -2,7 +2,7 @@ use clap::{value_parser, App};
 use colored::Colorize;
 use daemonize::Daemonize;
 use rss_rs::api::*;
-use rss_rs::db;
+use rss_rs::feed;
 use rss_rs::utils::*;
 use std::fs::File;
 use std::path::PathBuf;
@@ -15,7 +15,7 @@ fn start_auto_update_job(minutes: u64) {
 
     tokio::spawn(async move {
         loop {
-            let res = tokio::task::spawn_blocking(|| db::update_rss(None, false).unwrap()).await;
+            let res = tokio::task::spawn_blocking(|| feed::update_rss(None, false).unwrap()).await;
             match res {
                 Ok(_) => eprintln!("RSS updated successfully"),
                 Err(e) => eprintln!("Background task panicked: {:?}", e),

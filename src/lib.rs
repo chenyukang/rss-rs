@@ -1,3 +1,5 @@
 pub mod api;
-pub mod db;
+mod conf;
+mod db;
+pub mod feed;
 pub mod utils;
